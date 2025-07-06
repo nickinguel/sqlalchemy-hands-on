@@ -1,16 +1,17 @@
-from sqlalchemy import create_engine
 from sqlalchemy import text
-from urllib.parse import quote_plus
 from sqlalchemy.orm import Session
+from lib.global_types import DatabaseConfig
 
 
-mysqlPassword = quote_plus("handsOn@701")
-engine = create_engine(f"mysql+pymysql://root:{mysqlPassword}@localhost:3306/sql_alchemy?charset=utf8mb4", echo=True)
-# engine = create_engine("sqlite+pysqlite:///:memory:?charset=utf8mb4", echo=True)
+db_config: DatabaseConfig
+
+def init(config: DatabaseConfig):
+    global db_config
+    db_config = config
 
 
 def select_1():
-    with engine.connect() as conn:  
+    with db_config.engine.connect() as conn:  
         result = conn.execute(text("SELECT * FROM some_table")).all()
         
         for row in result:
@@ -20,7 +21,7 @@ def select_1():
 def select_2():
     stmt = text("SELECT x, y FROM some_table WHERE y > :y ORDER BY x, y")
 
-    with Session(engine) as session:
+    with Session(db_config.engine) as session:
         result = session.execute(stmt, {"y": 6})
 
         for row in result:
@@ -28,9 +29,9 @@ def select_2():
 
 
 def insert():
-    global engine
+    global db_config
 
-    with engine.begin() as conn:
+    with db_config.engine.begin() as conn:
         conn.execute(
             text("INSERT INTO some_table VALUES(:x, :y)"), 
             [{"x": 3, "y": 9}, {"x": 4, "y": 16}]   # Executemany syntax
@@ -38,5 +39,15 @@ def insert():
         # raise NameError()
 
 
+def update():
+    with Session(db_config.engine) as session:
+        result = session.execute(
+            text("UPDATE some_table SET y=:y WHERE x=:x"),
+            [{"x": 9, "y": 11}, {"x": 13, "y": 15}],
+        )
+        print(result)
+
+        session.commit()
+
 def main():
-    select_2()
+    select_1()
